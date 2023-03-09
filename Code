@@ -1,0 +1,223 @@
+## This Code is uncomplete, if you want that code send me an email at "agungtriutomo10@gmail.com". Thanks :)
+
+#---------------------------Welcome module---------------------------------
+
+welcome_UI <- function(id) {
+  ns <- NS(id)
+  modalDialog(
+    title = tags$h1(
+      style = "text-align: center;",
+      "Welcome to TSA Application !"
+    ),
+    tags$div(
+      style = "text-align: center;",
+      tags$p("This Application is a Prototype"),
+      tags$p("user can Analysis a time series data with this application"),
+      tags$p("you can read a guide in HELP tab"),
+      tags$p("Thank you and Enjoy the apps")
+    ),
+    footer = actionButton(
+      inputId = ns("play"),
+      label = "OK!",
+      icon = icon("play"),
+      style = "width:"
+    )
+  )
+}
+
+welcome <- function(input, output, session) {
+
+  id <- gsub("-$", "", session$ns(""))
+  showModal(ui = welcome_UI(id))
+
+  observeEvent(input$play, {
+    removeModal()
+  })
+
+  return(reactive(input$play))
+}
+
+shinyApp(
+  #--------------------Definisi UI---------------------
+  ui = 
+    
+    navbarPage(
+      theme = shinythemes::shinytheme(""),
+      h4("Time Series Analysis App"),
+      #-----------------------Panel 1----------------------
+      
+      tabPanel("File",
+               sidebarPanel(
+                 fileInput("file", "Select File",
+                           multiple = TRUE,
+                           accept = c("text/csv",
+                                      "text/commaseparatedvalues,text/plain",
+                                      ".csv"))),
+               mainPanel(
+                 tabsetPanel(
+                   tabPanel("Time Series Data",
+                            tableOutput(""))
+                 )
+               )
+      ),
+      
+      #-----------------------------Panel 2-------------------------
+      tabPanel("Plot",
+               mainPanel(
+                 tabsetPanel(
+                   tabPanel("Plot Time series",
+                            plotOutput("")),
+                   tabPanel("Plot ACF",
+                            plotOutput("")),
+                   tabPanel("Plot PACF",
+                            plotOutput(""))
+                 )
+               )
+      ),
+      
+      #-----------------------------Panel 3-------------------------
+      #-----------------------------Transformasi--------------------
+      tabPanel("Transformation",
+               fluidPage(
+                 mainPanel(h4("Lambda"),
+                           verbatimTextOutput("")
+                           #verbatimTextOutput("")  
+                 )
+               ),
+               mainPanel(h4("Data Transform"),
+                         tableOutput("")
+               )
+      ),
+      #-----------------------------Differencing---------------------
+      tabPanel("Differencing",
+               sidebarPanel(
+                 numericInput("drift", label = h3("Differencing"), value="1")
+                 
+               ),
+               mainPanel(
+                 tabsetPanel(
+                   tabPanel("Plot TS Diff",
+                            plotOutput("plot_ts_diff")),
+                   tabPanel("Plot ACF Diff",
+                            plotOutput("plot_acf_diff")),
+                   tabPanel("Plot PACF Diff",
+                            plotOutput("plot_pacf_diff"))
+                 )
+               )
+               
+      ),
+      #-----------------------------Panel 4-------------------------
+      tabPanel("ARIMA Model",
+               sidebarPanel(
+                 numericInput("p", "Autoregressive", value="0"),
+                 numericInput("d", "Diff", value="0"),
+                 numericInput("q", "Moving Average", value="0"),
+                 numericInput("h", "Forcasting", value="0")
+                 
+               ),
+               mainPanel(
+                 h4("Summary model"),
+                 verbatimTextOutput("summary"),
+                 verbatimTextOutput("summary_test")
+               )
+      ),
+      tabPanel("Help",
+               mainPanel(
+                 "Petunjuk Penggunaan Software TSA App",
+                 h4("1. Pada Tab File masukkan data dengan ekstensi .csv"),
+                 tags$img(src = "1.png"),
+                 h4("--> Masukkan file"),
+                 tags$img(src= "2.png"),
+                 h4("2. Lihat Plot time series pada tab Plot"),
+                 tags$img(src="3.png"),
+                 h4("--> Plot ACF"),
+                 tags$img(src="4.png"),
+                 h4("--> Plot PACF"),
+                 tags$img(src="5.png"),
+                 h4("3. Jika plot tidak stasioner dalam rata - rata, Maka pada tab Differencing masukkan jumlah pembeda dengan jumlah yg dibutuhkan (biasanya 1, 2, 3)"),
+                 tags$img(src="6.png"),
+                 h4("4. Jika plot tidak stasioner dalam variansi, Maka pada tab transformasi, akan muncul secara langsung hasil dari transformasi"),
+                 tags$img(src="7.png"),
+                 h4("5. Tentukan model dengan melihat Plot pada tab ARIMA Model"),
+                 tags$img(src="8.png")
+               )
+               
+      ),
+      tabPanel("About",
+               mainPanel(
+                 "Times Series App merupakan software yang dipergunakan untuk melakukan analisis deret waktu. Software ini dikembangkan oleh Agung Triutomo sebagai tugas akhir di Universitas Negeri Makassar yang dibimbing oleh Ansari Saleh Ahmar,S.Si.,M.Sc. dan Muhammad Kasim Aidid, S.Si.,M.Si."
+               )
+               
+      )),
+  
+  #--------------------Server------------------------
+  server = function(input, output,session) {
+    #----------------Welcome--------------------
+    start <- callModule (module = welcome, id="welcome")
+    #----------------------server panel 1-----------------------
+    myData<- reactive({
+      inFile<-input$file
+      if (is.null(inFile))
+        {return("Belum Ada Data, Silahkan Masukan Data Dahulu!!")}
+      read.csv(inFile$datapath)
+    })
+    output$contents <- renderTable({
+      myData()
+    })
+    
+    #----------------------------server panel 2----------------------
+    
+    output$plot_1<-renderPlot({
+      "plot_1"= ts.plot(myData())
+      if (is.null(myData()))
+        {return(print("Tidak"))}
+    })
+    output$plot_2<-renderPlot({
+      "plot_2"=acf(myData())
+    })
+    output$plot_3<-renderPlot({
+      "plot_3"=pacf(myData())
+    })
+    #----------------------------server panel 3--------------------------
+    #----------------------------Transformasi----------------------------
+    output$summary_trans<- renderPrint({
+      lambda<-BoxCox.lambda(ts(myData()))
+      if (is.null(myData())) {
+        return(NULL)
+        }else{
+          print(lambda)
+        }
+    })
+    output$summary_trans1<-renderTable({
+      lambda<-BoxCox.lambda(ts(myData()))
+      bc<-BoxCox(myData(), lambda)
+    })  
+    
+    #----------------------------Differencing----------------------------
+    output$plot_ts_diff<-renderPlot({
+      "plot_ts_diff"= ts.plot(diff(ts(myData()),lag = input$drift))
+    })
+    output$plot_acf_diff<-renderPlot({
+      "plot_acf_diff"= acf(diff(ts(myData()),lag= input$drift))
+    })
+    output$plot_pacf_diff<-renderPlot({
+      "plot_pacf_diff"= pacf(diff(ts(myData()),lag = input$drift))
+    })
+    #----------------------------server panel 4--------------------------
+    output$summary<-renderPrint({
+      model<-Arima(ts(myData()), order=c(input$p, input$d, input$q), 
+                   include.mean= FALSE, include.drift=FALSE,include.constant=TRUE,
+                   biasadj=FALSE,method = "ML")
+      summary(model)
+    })
+    
+    output$summary_test<-renderPrint({
+      model<-Arima(ts(myData()), order=c(input$p, input$d, input$q), 
+                   include.mean= FALSE, include.drift=FALSE,include.constant=TRUE,
+                   biasadj=FALSE,method = "ML")
+      hasil<-forecast(model,h=input$h)
+      hasil
+    })
+  }
+  
+)
